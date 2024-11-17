@@ -1,0 +1,41 @@
+service: notion-campaign-automation
+
+provider:
+  name: aws
+  runtime: python3.9
+  region: us-east-1
+  environment:
+    NOTION_TOKEN: ${ssm:/notion/token}
+    CAMPAIGN_STRATEGY_DB_ID: ${ssm:/notion/campaign-db}
+    CONTENT_CALENDAR_DB_ID: ${ssm:/notion/calendar-db}
+
+functions:
+  processCampaigns:
+    handler: automation.lambda_handler
+    events:
+      - schedule: rate(1 hour)
+    timeout: 300  
+    memorySize: 256
+    layers:
+      - !Ref PythonRequirementsLambdaLayer
+
+  webhookHandler:
+    handler: automation.webhook_handler
+    events:
+      - httpApi:
+          path: /notion-webhook
+          method: post
+    timeout: 29    # Changed to 29 seconds for HTTP API compatibility
+    memorySize: 256
+    layers:
+      - !Ref PythonRequirementsLambdaLayer
+
+custom:
+  pythonRequirements:
+    layer:
+      name: python-deps
+      description: Python dependencies
+    dockerizePip: true
+
+plugins:
+  - serverless-python-requirements
